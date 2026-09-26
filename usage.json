@@ -1,0 +1,20 @@
+[
+  {
+    "user_id": "U001",
+    "software": "Jira",
+    "last_activity": "2026-09-18",
+    "login_count_30d": 12
+  },
+  {
+    "user_id": "U002",
+    "software": "Jira",
+    "last_activity": "2026-07-01",
+    "login_count_30d": 0
+  },
+  {
+    "user_id": "U003",
+    "software": "Slack",
+    "last_activity": "2026-09-12",
+    "login_count_30d": 8
+  }
+]
