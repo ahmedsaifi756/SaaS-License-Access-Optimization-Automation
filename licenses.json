@@ -1,0 +1,30 @@
+[
+  {
+    "user_id": "U001",
+    "user_name": "Ahmed",
+    "software": "Jira",
+    "license_type": "Premium",
+    "assigned": true
+  },
+  {
+    "user_id": "U002",
+    "user_name": "Sara",
+    "software": "Jira",
+    "license_type": "Premium",
+    "assigned": true
+  },
+  {
+    "user_id": "U003",
+    "user_name": "John",
+    "software": "Slack",
+    "license_type": "Pro",
+    "assigned": true
+  },
+  {
+    "user_id": "U004",
+    "user_name": "Ali",
+    "software": "Notion",
+    "license_type": "Pro",
+    "assigned": true
+  }
+]
