@@ -1,0 +1,533 @@
+{
+  "name": "SaaS License / Access Optimization Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/ahmedthetechie/saas-license-optimization/refs/heads/main/licenses.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -496,
+        -400
+      ],
+      "id": "00487bbf-94b3-4ee5-b933-6ebc92d8ec1d",
+      "name": "License Api"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/ahmedthetechie/saas-license-optimization/refs/heads/main/usage.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -496,
+        -160
+      ],
+      "id": "65c29a21-a3f3-4d31-b8ae-e31f43d0c015",
+      "name": "Usage API"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -272
+      ],
+      "id": "3decfcf0-6882-480c-bac8-fa6d4d32e11a",
+      "name": "Start License Review"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "user_id, software",
+        "joinMode": "enrichInput1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -32,
+        -304
+      ],
+      "id": "1a19247f-588d-4a6f-83bf-5b4e31bf6e49",
+      "name": "Merge License+Usage"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nreturn items.map(item => {\n  const data = item.json;\n\n  let status;\n  let reason;\n  let inactiveDays = null;\n\n  if (!data.last_activity) {\n    status = \"DATA_CHECK\";\n    reason = \"No usage record available\";\n  } else {\n    const lastActivity = new Date(data.last_activity);\n\n    inactiveDays = Math.floor(\n      (now - lastActivity) / (1000 * 60 * 60 * 24)\n    );\n\n    if (inactiveDays > 60) {\n      status = \"REVIEW\";\n      reason = `Inactive for ${inactiveDays} days`;\n    } else {\n      status = \"KEEP\";\n      reason = `Used within the last ${inactiveDays} days`;\n    }\n  }\n\n  return {\n    json: {\n      ...data,\n      inactive_days: inactiveDays,\n      status,\n      reason\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -304
+      ],
+      "id": "25518975-c285-41bd-8dfe-45e321f58129",
+      "name": "Evaluate License Usage"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.data;\nconst parsed = JSON.parse(rawText);\nreturn parsed.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -160
+      ],
+      "id": "a06d8bb6-4c9e-44fd-8871-9d5e3d86ed6b",
+      "name": "Usage Json"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.data;\nconst parsed = JSON.parse(rawText);\nreturn parsed.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -400
+      ],
+      "id": "abfac7d1-ccb0-4d1b-95e0-f1c4289517c9",
+      "name": "License Json"
+    },
+    {
+      "parameters": {
+        "jsCode": "const checkedAt = new Date().toISOString();\n\nreturn items.map(item => {\n  const data = item.json;\n\n  return {\n    json: {\n      user_id: data.user_id,\n      user_name: data.user_name,\n      software: data.software,\n      license_type: data.license_type,\n      assigned: data.assigned,\n      last_activity: data.last_activity ?? null,\n      login_count_30d: data.login_count_30d ?? null,\n      inactive_days: data.inactive_days ?? null,\n      status: data.status,\n      reason: data.reason,\n      checked_at: checkedAt\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -304
+      ],
+      "id": "e47f417e-b43f-4fc6-8fea-1bd4703cc09d",
+      "name": "Prepare Findings"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "license_review_results",
+          "mode": "list",
+          "cachedResultName": "license_review_results"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "assigned": "={{ $json.assigned }}",
+            "user_id": "={{ $json.user_id }}",
+            "user_name": "={{ $json.user_name }}",
+            "software": "={{ $json.software }}",
+            "license_type": "={{ $json.license_type }}",
+            "last_activity": "={{ $json.last_activity }}",
+            "login_count_30d": "={{ $json.login_count_30d }}",
+            "inactive_days": "={{ $json.inactive_days }}",
+            "status": "={{ $json.status }}",
+            "reason": "={{ $json.reason }}",
+            "checked_at": "={{ $json.checked_at }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "user_name",
+              "displayName": "user_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "software",
+              "displayName": "software",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "license_type",
+              "displayName": "license_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "assigned",
+              "displayName": "assigned",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_activity",
+              "displayName": "last_activity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "login_count_30d",
+              "displayName": "login_count_30d",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "inactive_days",
+              "displayName": "inactive_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checked_at",
+              "displayName": "checked_at",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "1620aee8-33bd-4642-9a2c-fe2bcf814cc7",
+      "name": "Store License Findings",
+      "credentials": {
+        "postgres": {
+          "id": "lwjyKuXhtDALoxTY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "acf595b9-6895-41bd-bf3a-c4698ebd1116"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fb8d4626-81c2-4978-8bc2-d4a337c76660",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "DATA_CHECK",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        0
+      ],
+      "id": "0dd50726-be6a-4c35-8657-8fe089e70ed4",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BV5V99YH2",
+          "mode": "list",
+          "cachedResultName": "all-urgent-tickets"
+        },
+        "text": "=⚠️ SaaS License Review Required\n\nUser: {{ $json.user_name }}\nSoftware: {{ $json.software }}\nLicense: {{ $json.license_type }}\n\nInactive: {{ $json.inactive_days }} days\n\nReason:\nInactive for {{ $json.inactive_days }} days\n\nAction:\nPlease review before removing access.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        320,
+        -96
+      ],
+      "id": "4468279b-b7c4-4971-920b-e54c845f0cef",
+      "name": "Review Notification",
+      "webhookId": "1d090d04-26e7-4e52-a6bc-97137e0278f7",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "5JjLoMo4QRNqg8Ok",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BV5V99YH2",
+          "mode": "list",
+          "cachedResultName": "all-urgent-tickets"
+        },
+        "text": "=⚠️ SaaS License Data Check Required\n\nUser: {{ $json.user_name }}\nSoftware: {{ $json.software }}\nLicense: {{ $json.license_type }}\n\nStatus: DATA_CHECK\n\nReason:\nNo usage record available\n\nAction:\nVerify usage data before making an access decision.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        336,
+        80
+      ],
+      "id": "75b096ed-9fcf-4e49-a308-a8c20b2bdea0",
+      "name": "Data Check Notification",
+      "webhookId": "7e89d9cf-0bd8-476b-a48b-420ea7df8744",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "5JjLoMo4QRNqg8Ok",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "License Api": {
+      "main": [
+        [
+          {
+            "node": "License Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usage API": {
+      "main": [
+        [
+          {
+            "node": "Usage Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start License Review": {
+      "main": [
+        [
+          {
+            "node": "License Api",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Usage API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge License+Usage": {
+      "main": [
+        [
+          {
+            "node": "Evaluate License Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usage Json": {
+      "main": [
+        [
+          {
+            "node": "Merge License+Usage",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "License Json": {
+      "main": [
+        [
+          {
+            "node": "Merge License+Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate License Usage": {
+      "main": [
+        [
+          {
+            "node": "Prepare Findings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Findings": {
+      "main": [
+        [
+          {
+            "node": "Store License Findings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store License Findings": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Review Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Data Check Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d177b1f6-7d60-43f1-a00e-8a5de9da228c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ac6f4f0d3cab462720d3c9ba0e60bbbddfed640a666e9dd9e2b23a8e64af04ea"
+  },
+  "nodeGroups": [],
+  "id": "0tHln4stZvzLlndg",
+  "tags": []
+}
